@@ -133,7 +133,7 @@ function requireLogin() {
   $('authStatus').textContent = 'لازم تسجّل دخولك بحساب Google الأول.';
   return false;
 }
-$('accountBtn').onclick = showAccount;
+// Account button handled by ui-controls.js independently of Supabase.
 $('closeAccount').onclick = () => {
   if (!user) {
     $('authStatus').textContent = 'تسجيل الدخول مطلوب للمتابعة.';
@@ -173,16 +173,7 @@ $('logout').onclick = async () => {
   const { error } = await supabase.auth.signOut();
   if (error) $('authStatus').textContent = error.message;
 };
-const themeKey = 'elgabry_theme';
-function applyTheme(theme) {
-  const dark = theme === 'dark';
-  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-  $('themeBtn').textContent = dark ? '☀️ الوضع النهاري' : '🌙 الوضع الليلي';
-  $('themeBtn').setAttribute('aria-pressed', String(dark));
-  localStorage.setItem(themeKey, dark ? 'dark' : 'light');
-}
-$('themeBtn').onclick = () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
-applyTheme(localStorage.getItem(themeKey) || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+// Theme toggle is handled by ui-controls.js.
 supabase.auth.onAuthStateChange((_event, session) => {
   user = session?.user || null;
   if (authReady) renderAccount();
