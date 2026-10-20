@@ -104,7 +104,7 @@ $('checkout').onsubmit = async event => {
   }
   sending = true; $('submitOrder').disabled = true; escapeStatus('جاري تسجيل طلبك...');
   try {
-    const { data, error } = await supabase.rpc('place_store_order', {
+    const { data, error } = await supabase.rpc('place_store_order_for_user', {
       p_customer_name: info.customer_name, p_customer_phone: info.customer_phone,
       p_delivery_method: info.delivery_method, p_customer_address: info.customer_address,
       p_items: chosen, p_request_id: pending.id
@@ -114,6 +114,7 @@ $('checkout').onsubmit = async event => {
     cart = {}; renderCart(); $('checkout').reset(); $('addressBox').hidden = true;
     escapeStatus(`تم تسجيل طلبك بنجاح! رقم الطلب: ${data}. احتفظ بالرقم للمتابعة.`, 'success');
     await loadProducts();
+    await loadMyOrders();
   } catch (err) { console.error('Checkout error:', err); escapeStatus('تعذر تأكيد الطلب. حاول مرة أخرى بنفس البيانات، أو تواصل مع المكتبة.', 'error'); }
   finally { sending = false; $('submitOrder').disabled = false; }
 };
@@ -152,6 +153,7 @@ function renderAccount() {
   if (user && !$('customer').value.trim()) $('customer').value = user.user_metadata?.full_name || user.user_metadata?.name || '';
   if (authReady && !user) showAccount();
   if (user && accountDialog.open) accountDialog.close();
+  if (user) loadMyOrders();
 }
 async function login() {
   $('googleLogin').disabled = true;
@@ -173,6 +175,38 @@ $('logout').onclick = async () => {
   const { error } = await supabase.auth.signOut();
   if (error) $('authStatus').textContent = error.message;
 };
+
+// طلبات العميل: RLS في قاعدة البيانات هو الذي يحدد صاحب الطلب.
+async function loadMyOrders() {
+  const panel = $('myOrdersList');
+  if (!panel) return;
+  panel.replaceChildren();
+  if (!user) { panel.textContent = 'سجّل دخولك لعرض طلباتك.'; return; }
+  panel.textContent = 'جاري تحميل طلباتك...';
+  const { data, error } = await supabase.from('orders')
+    .select('id,created_at,status,total,delivery_method,order_items(product_name,quantity,unit_price)')
+    .order('created_at', { ascending: false }).limit(30);
+  panel.replaceChildren();
+  if (error) { console.error('My orders:',error); panel.textContent = 'تعذر تحميل طلباتك. حاول مرة أخرى.'; return; }
+  if (!data?.length) { panel.textContent = 'مفيش طلبات مرتبطة بحسابك لحد دلوقتي.'; return; }
+  const labels = {pending:'جديد',confirmed:'مؤكد',shipped:'جاري التوصيل',completed:'مكتمل',cancelled:'ملغي'};
+  for (const order of data) {
+    const card = document.createElement('article'); card.className = 'my-order-card';
+    const head = document.createElement('strong');
+    head.textContent = `طلب ${String(order.id).slice(0,8)} • ${labels[order.status] || order.status} • ${money(order.total)}`;
+    const date = document.createElement('small');
+    date.textContent = new Date(order.created_at).toLocaleString('ar-EG');
+    card.append(head,date);
+    for (const item of order.order_items || []) {
+      const line = document.createElement('div');
+      line.textContent = `${item.product_name} × ${item.quantity} — ${money(item.unit_price)}`;
+      card.append(line);
+    }
+    panel.append(card);
+  }
+}
+$('refreshMyOrders')?.addEventListener('click',loadMyOrders);
+
 // Theme toggle is handled by ui-controls.js.
 supabase.auth.onAuthStateChange((_event, session) => {
   user = session?.user || null;
