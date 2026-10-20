@@ -1,0 +1,811 @@
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>لوحة الإدارة | مكتبة الجبري</title>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    :root {
+      --dark: #55534f;
+      --beige: #f3f0e9;
+      --border: #e5e1d8;
+      --green: #24784b;
+      --red: #b83232;
+    }
+
+    body {
+      margin: 0;
+      font-family: Tahoma, Arial, sans-serif;
+      background: var(--beige);
+      color: #333;
+    }
+
+    header {
+      background: var(--dark);
+      color: white;
+      padding: 22px 18px;
+    }
+
+    .header-inner, main {
+      max-width: 1150px;
+      margin: auto;
+    }
+
+    .header-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    h1 { margin: 0 0 8px; font-size: 25px; }
+    header p { margin: 0; color: #eeeae3; }
+
+    main { padding: 24px 16px 50px; }
+
+    .card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 20px;
+      box-shadow: 0 3px 12px #00000008;
+    }
+
+    h2 { font-size: 20px; margin-top: 0; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 15px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .full { grid-column: 1 / -1; }
+
+    label { font-size: 14px; font-weight: bold; }
+
+    input, select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #d8d4cc;
+      border-radius: 8px;
+      background: white;
+      font: inherit;
+      min-width: 0;
+    }
+
+    input:focus, select:focus {
+      outline: 2px solid #aaa69d;
+      outline-offset: 1px;
+    }
+
+    .actions, .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 15px;
+      cursor: pointer;
+      background: var(--dark);
+      color: white;
+      font: inherit;
+    }
+
+    button:disabled { opacity: .55; cursor: wait; }
+    button.green { background: var(--green); }
+    button.red { background: var(--red); }
+    button.light { background: #e9e6df; color: #333; }
+    button.small { padding: 8px 10px; font-size: 13px; }
+
+    #status {
+      white-space: pre-wrap;
+      line-height: 1.8;
+      overflow-wrap: anywhere;
+    }
+
+    .success { color: var(--green); }
+    .error { color: var(--red); }
+
+    .toolbar { margin: 16px 0; }
+    .toolbar input { flex: 1; min-width: 190px; }
+
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 700px;
+    }
+
+    th, td {
+      text-align: right;
+      padding: 12px 10px;
+      border-bottom: 1px solid #eee;
+      vertical-align: middle;
+    }
+
+    th { background: #f7f5f1; }
+    td .actions { flex-wrap: nowrap; }
+
+    .product-image {
+      width: 48px;
+      height: 48px;
+      object-fit: cover;
+      border-radius: 7px;
+      background: var(--beige);
+    }
+
+    .muted { color: #777; font-size: 13px; }
+
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .full { grid-column: auto; }
+      .card { padding: 16px; }
+      h1 { font-size: 21px; }
+    }
+
+    .order-dialog{width:min(620px,94vw);max-height:85vh;overflow:auto;border:0;border-radius:16px;padding:24px;font-family:Tahoma,Arial,sans-serif;color:#333;box-shadow:0 15px 50px #0003}
+    .order-dialog::backdrop{background:#0009}
+    .dialog-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+    .dialog-header h2{margin:0}
+    .order-detail{padding:11px 0;border-bottom:1px solid #eee;line-height:1.7;overflow-wrap:anywhere}
+    .order-detail strong{display:block;color:#55534f}
+    .order-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .order-stats .stat{background:#f7f5f1;border-radius:10px;padding:14px}
+    .order-stats strong{display:block;font-size:21px;margin-top:7px}
+    @media(max-width:600px){.order-stats{grid-template-columns:1fr}}
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="header-inner">
+      <div>
+        <h1>مكتبة الجبري</h1>
+        <p>إدارة المنتجات والمخزون وطلبات العملاء</p>
+      </div>
+      <button id="logout" class="light" hidden>تسجيل الخروج</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2 id="formTitle">إضافة منتج جديد</h2>
+
+      <form id="productForm">
+        <input id="productId" type="hidden">
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="name">اسم المنتج *</label>
+            <input id="name" required maxlength="200"
+                   placeholder="مثال: كتاب سلاح التلميذ">
+          </div>
+
+          <div class="field">
+            <label for="category">القسم *</label>
+            <select id="category" required>
+              <option value="كتب خارجية">كتب خارجية</option>
+              <option value="أدوات هندسية">أدوات هندسية</option>
+              <option value="أدوات مدرسية">أدوات مدرسية</option>
+              <option value="ألوان">ألوان</option>
+              <option value="شنط مدرسية">شنط مدرسية</option>
+              <option value="لانش بوكس">لانش بوكس</option>
+              <option value="ألعاب وهدايا">ألعاب وهدايا</option>
+              <option value="عام">عام</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="price">السعر بالجنيه *</label>
+            <input id="price" type="number" min="0" step="0.01"
+                   required placeholder="0.00">
+          </div>
+
+          <div class="field">
+            <label for="stock">الكمية في المخزون *</label>
+            <input id="stock" type="number" min="0" step="1"
+                   required placeholder="0">
+          </div>
+
+          <div class="field full">
+            <label for="imageUrl">رابط صورة المنتج (اختياري)</label>
+            <input id="imageUrl" type="url"
+                   placeholder="https://example.com/image.jpg">
+            <span class="muted">الإصدار الحالي يستخدم رابط صورة مباشرًا، وليس رفع الملفات من الجهاز.</span>
+          </div>
+
+          <div class="field">
+            <label for="active">حالة المنتج</label>
+            <select id="active">
+              <option value="true">ظاهر في المتجر</option>
+              <option value="false">مخفي من المتجر</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions" style="margin-top:18px">
+          <button id="saveBtn" type="submit" class="green">
+            حفظ المنتج
+          </button>
+          <button id="cancelEdit" type="button" class="light" hidden>
+            إلغاء التعديل
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>المنتجات الموجودة</h2>
+
+      <div class="toolbar">
+        <input id="search" type="search"
+               placeholder="ابحث باسم المنتج أو القسم...">
+        <button id="reload" type="button">تحديث القائمة</button>
+      </div>
+
+      <p id="status" role="status" aria-live="polite">
+        جاري التحقق من صلاحيات المدير...
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>الصورة</th>
+              <th>المنتج</th>
+              <th>القسم</th>
+              <th>السعر</th>
+              <th>الكمية</th>
+              <th>الحالة</th>
+              <th>الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="products"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" id="ordersSection" hidden>
+      <h2>📦 إدارة طلبات العملاء</h2>
+      <div class="order-stats">
+        <div class="stat">إجمالي الطلبات<strong id="totalOrders">0</strong></div>
+        <div class="stat">طلبات جديدة<strong id="pendingOrders">0</strong></div>
+        <div class="stat">قيمة الطلبات المكتملة<strong id="ordersRevenue">0 ج.م</strong></div>
+      </div>
+      <div class="toolbar"><button id="refreshOrders" type="button">تحديث الطلبات</button></div>
+      <p id="ordersStatus" role="status" aria-live="polite"></p>
+      <div class="table-wrap"><table><thead><tr><th>رقم الطلب</th><th>العميل</th><th>الموبايل</th><th>الاستلام</th><th>الإجمالي</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody id="ordersTable"></tbody></table></div>
+    </section>
+  </main>
+
+  <dialog id="orderDetailsDialog" class="order-dialog" aria-label="تفاصيل الطلب">
+    <div class="dialog-header"><h2>📦 تفاصيل الطلب</h2><button id="closeOrderDetails" type="button" class="light">إغلاق ✕</button></div>
+    <div id="orderDetailsContent"></div>
+  </dialog>
+  <script type="module">
+    import { createClient } from
+      'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    import {
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY
+    } from './supabase-config.js';
+
+    const supabase = createClient(
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY
+    );
+
+    const $ = id => document.getElementById(id);
+
+    let products = [];
+    let authorized = false;
+    let busy = false;
+
+    function message(text, type = '') {
+      $('status').textContent = text;
+      $('status').className = type;
+    }
+
+    function money(value) {
+      return Number(value || 0).toLocaleString('ar-EG', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }) + ' ج.م';
+    }
+
+    async function init() {
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+
+      if (sessionError || !sessionData.session) {
+        message('سجّل الدخول أولًا من صفحة الإدارة.', 'error');
+        return;
+      }
+
+      const { data: isAdmin, error: adminError } =
+        await supabase.rpc('is_store_admin');
+
+      if (adminError || isAdmin !== true) {
+        console.error('Admin verification:', adminError);
+        message(
+          'تعذر التحقق من صلاحية المدير. لا يمكن إدارة المنتجات.',
+          'error'
+        );
+        return;
+      }
+
+      authorized = true;
+      $('logout').hidden = false;
+      await loadProducts();
+      $('ordersSection').hidden = false;
+      await loadOrders();
+    }
+
+    async function loadProducts() {
+      if (!authorized) return;
+
+      message('جاري تحميل المنتجات...');
+
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, price, stock, category, image_url, is_active, created_at')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Load products:', error);
+        message('تعذر تحميل المنتجات: ' + error.message, 'error');
+        return;
+      }
+
+      products = data || [];
+      renderProducts();
+      message(`عدد المنتجات: ${products.length}`, 'success');
+    }
+
+    function renderProducts() {
+      const tbody = $('products');
+      tbody.replaceChildren();
+
+      const query = $('search').value.trim().toLocaleLowerCase();
+
+      const filtered = products.filter(product =>
+        String(product.name || '').toLocaleLowerCase().includes(query) ||
+        String(product.category || '').toLocaleLowerCase().includes(query)
+      );
+
+      if (!filtered.length) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 7;
+        cell.textContent = products.length
+          ? 'لا توجد نتائج مطابقة للبحث.'
+          : 'لا توجد منتجات حتى الآن. أضف أول منتج من النموذج أعلاه.';
+        row.append(cell);
+        tbody.append(row);
+        return;
+      }
+
+      for (const product of filtered) {
+        const row = document.createElement('tr');
+
+        const imageCell = document.createElement('td');
+        if (product.image_url) {
+          const img = document.createElement('img');
+          img.className = 'product-image';
+          img.src = product.image_url;
+          img.alt = product.name || 'صورة المنتج';
+          img.loading = 'lazy';
+          img.onerror = () => {
+            img.removeAttribute('src');
+            img.alt = 'تعذر تحميل الصورة';
+          };
+          imageCell.append(img);
+        } else {
+          imageCell.textContent = '📦';
+        }
+
+        row.append(imageCell);
+
+        const values = [
+          product.name || 'بدون اسم',
+          product.category || 'عام',
+          money(product.price),
+          String(product.stock ?? 0),
+          product.is_active ? 'ظاهر' : 'مخفي'
+        ];
+
+        for (const value of values) {
+          const cell = document.createElement('td');
+          cell.textContent = value;
+          row.append(cell);
+        }
+
+        const actionsCell = document.createElement('td');
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'small';
+        editButton.textContent = 'تعديل';
+        editButton.addEventListener('click', () => startEdit(product));
+
+        const toggleButton = document.createElement('button');
+        toggleButton.type = 'button';
+        toggleButton.className = 'small light';
+        toggleButton.textContent = product.is_active ? 'إخفاء' : 'إظهار';
+        toggleButton.addEventListener('click', () =>
+          toggleProduct(product)
+        );
+
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'small red';
+        deleteButton.textContent = 'حذف';
+        deleteButton.addEventListener('click', () =>
+          deleteProduct(product)
+        );
+
+        actions.append(editButton, toggleButton, deleteButton);
+        actionsCell.append(actions);
+        row.append(actionsCell);
+        tbody.append(row);
+      }
+    }
+
+    function startEdit(product) {
+      $('productId').value = product.id;
+      $('name').value = product.name || '';
+      $('category').value = product.category || 'عام';
+      $('price').value = product.price ?? 0;
+      $('stock').value = product.stock ?? 0;
+      $('imageUrl').value = product.image_url || '';
+      $('active').value = String(product.is_active !== false);
+
+      $('formTitle').textContent = 'تعديل المنتج';
+      $('saveBtn').textContent = 'حفظ التعديلات';
+      $('cancelEdit').hidden = false;
+      $('name').focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetForm() {
+      $('productForm').reset();
+      $('productId').value = '';
+      $('formTitle').textContent = 'إضافة منتج جديد';
+      $('saveBtn').textContent = 'حفظ المنتج';
+      $('cancelEdit').hidden = true;
+      $('category').value = 'كتب خارجية';
+      $('active').value = 'true';
+    }
+
+    $('productForm').addEventListener('submit', async event => {
+      event.preventDefault();
+
+      if (!authorized || busy) return;
+
+      const name = $('name').value.trim();
+      const price = Number($('price').value);
+      const stock = Number($('stock').value);
+      const category = $('category').value;
+      const imageUrl = $('imageUrl').value.trim();
+      const isActive = $('active').value === 'true';
+      const productId = $('productId').value;
+
+      if (!name || !Number.isFinite(price) || price < 0 ||
+          !Number.isInteger(stock) || stock < 0) {
+        message('راجع الاسم والسعر والكمية المدخلة.', 'error');
+        return;
+      }
+
+      const payload = {
+        name,
+        price,
+        stock,
+        category,
+        image_url: imageUrl || null,
+        is_active: isActive
+      };
+
+      busy = true;
+      $('saveBtn').disabled = true;
+      message(productId ? 'جاري حفظ التعديلات...' : 'جاري إضافة المنتج...');
+
+      try {
+        let result;
+
+        if (productId) {
+          result = await supabase
+            .from('products')
+            .update(payload)
+            .eq('id', productId);
+        } else {
+          result = await supabase
+            .from('products')
+            .insert(payload);
+        }
+
+        if (result.error) {
+          console.error('Save product:', result.error);
+          message('تعذر حفظ المنتج: ' + result.error.message, 'error');
+          return;
+        }
+
+        resetForm();
+        await loadProducts();
+        message(productId ? 'تم تحديث المنتج بنجاح.' : 'تمت إضافة المنتج بنجاح.', 'success');
+      } catch (error) {
+        console.error(error);
+        message('حدث خطأ غير متوقع أثناء الحفظ.', 'error');
+      } finally {
+        busy = false;
+        $('saveBtn').disabled = false;
+      }
+    });
+
+    async function toggleProduct(product) {
+      if (!authorized || busy) return;
+
+      busy = true;
+      message('جاري تحديث حالة المنتج...');
+
+      try {
+        const { error } = await supabase
+          .from('products')
+          .update({ is_active: !product.is_active })
+          .eq('id', product.id);
+
+        if (error) {
+          console.error(error);
+          message('تعذر تحديث الحالة: ' + error.message, 'error');
+          return;
+        }
+
+        await loadProducts();
+        message('تم تحديث حالة المنتج.', 'success');
+      } finally {
+        busy = false;
+      }
+    }
+
+    async function deleteProduct(product) {
+      if (!authorized || busy) return;
+
+      const confirmed = window.confirm(
+        `هل أنت متأكد من حذف المنتج "${product.name}"؟ لا يمكن التراجع عن هذا الإجراء بسهولة.`
+      );
+
+      if (!confirmed) return;
+
+      busy = true;
+      message('جاري حذف المنتج...');
+
+      try {
+        const { error } = await supabase
+          .from('products')
+          .delete()
+          .eq('id', product.id);
+
+        if (error) {
+          console.error(error);
+          message('تعذر حذف المنتج: ' + error.message, 'error');
+          return;
+        }
+
+        if ($('productId').value === String(product.id)) {
+          resetForm();
+        }
+
+        await loadProducts();
+        message('تم حذف المنتج.', 'success');
+      } finally {
+        busy = false;
+      }
+    }
+
+    $('search').addEventListener('input', renderProducts);
+    $('reload').addEventListener('click', loadProducts);
+    $('cancelEdit').addEventListener('click', resetForm);
+
+    $('logout').addEventListener('click', async () => {
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        message('تعذر تسجيل الخروج: ' + error.message, 'error');
+        return;
+      }
+
+      window.location.href = './admin.html';
+    });
+
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        window.location.href = './admin.html';
+      }
+    });
+
+
+    const orderStatuses = {
+      pending: 'طلب جديد', confirmed: 'تم التأكيد',
+      shipped: 'تم الشحن', completed: 'مكتمل', cancelled: 'ملغي'
+    };
+
+    function addOrderDetail(container, label, value) {
+      const box = document.createElement('div');
+      box.className = 'order-detail';
+      const title = document.createElement('strong');
+      title.textContent = label;
+      const content = document.createElement('span');
+      content.textContent = String(value ?? '—');
+      box.append(title, content);
+      container.append(box);
+    }
+
+    async function showOrderDetails(orderId) {
+      if (!authorized) return;
+      const dialog = $('orderDetailsDialog');
+      const content = $('orderDetailsContent');
+      content.textContent = 'جاري تحميل تفاصيل الطلب...';
+      dialog.showModal();
+      const { data: order, error } = await supabase.from('orders')
+        .select('id, customer_name, customer_phone, customer_address, delivery_method, payment_method, total, status, created_at')
+        .eq('id', orderId).single();
+      if (error) {
+        content.textContent = 'تعذر تحميل التفاصيل: ' + error.message;
+        return;
+      }
+      content.replaceChildren();
+      addOrderDetail(content, 'رقم الطلب', order.id);
+      addOrderDetail(content, 'اسم العميل', order.customer_name);
+      addOrderDetail(content, 'رقم الموبايل', order.customer_phone);
+      addOrderDetail(content, 'طريقة الاستلام', order.delivery_method === 'delivery' ? 'توصيل' : 'استلام من المكتبة');
+      addOrderDetail(content, 'العنوان', order.customer_address);
+      addOrderDetail(content, 'طريقة الدفع', order.payment_method === 'cash' ? 'نقدًا' : order.payment_method);
+      addOrderDetail(content, 'حالة الطلب', orderStatuses[order.status] || order.status);
+      addOrderDetail(content, 'الإجمالي', money(order.total));
+      addOrderDetail(content, 'تاريخ الطلب', order.created_at ? new Date(order.created_at).toLocaleString('ar-EG') : '—');
+      const heading = document.createElement('h3');
+      heading.textContent = 'المنتجات المطلوبة';
+      heading.style.marginTop = '20px';
+      content.append(heading);
+
+      const { data: items, error: itemsError } = await supabase
+        .from('order_items')
+        .select('product_name, quantity, unit_price')
+        .eq('order_id', orderId);
+
+      if (itemsError) {
+        addOrderDetail(content, 'تعذر تحميل الأصناف', itemsError.message);
+        return;
+      }
+      if (!items?.length) {
+        addOrderDetail(content, 'الأصناف', 'لا توجد أصناف محفوظة لهذا الطلب (قد يكون طلبًا قديمًا).');
+        return;
+      }
+      const wrap = document.createElement('div');
+      wrap.className = 'table-wrap';
+      const table = document.createElement('table');
+      table.style.minWidth = '460px';
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      for (const label of ['المنتج', 'الكمية', 'سعر الوحدة', 'الإجمالي']) {
+        const th = document.createElement('th');
+        th.textContent = label;
+        headerRow.append(th);
+      }
+      thead.append(headerRow);
+      const tbody = document.createElement('tbody');
+      for (const item of items) {
+        const row = document.createElement('tr');
+        for (const value of [
+          item.product_name, String(item.quantity), money(item.unit_price),
+          money(Number(item.unit_price) * Number(item.quantity))
+        ]) {
+          const td = document.createElement('td');
+          td.textContent = value;
+          row.append(td);
+        }
+        tbody.append(row);
+      }
+      table.append(thead, tbody);
+      wrap.append(table);
+      content.append(wrap);
+    }
+
+    async function loadOrders() {
+      if (!authorized) return;
+      const table = $('ordersTable');
+      const status = $('ordersStatus');
+      status.textContent = 'جاري تحميل الطلبات...';
+      const { data, error } = await supabase.from('orders')
+        .select('id, customer_name, customer_phone, delivery_method, total, status, created_at')
+        .order('created_at', { ascending: false });
+      if (error) {
+        status.textContent = 'تعذر تحميل الطلبات: ' + error.message;
+        return;
+      }
+      const orders = data || [];
+      table.replaceChildren();
+      $('totalOrders').textContent = orders.length;
+      $('pendingOrders').textContent = orders.filter(o => o.status === 'pending').length;
+      $('ordersRevenue').textContent = money(orders.filter(o => o.status === 'completed').reduce((sum,o) => sum + Number(o.total || 0),0));
+      for (const order of orders) {
+        const row = document.createElement('tr');
+        for (const value of [order.id, order.customer_name || '—', order.customer_phone || '—', order.delivery_method === 'delivery' ? 'توصيل' : 'استلام من المكتبة', money(order.total)]) {
+          const cell = document.createElement('td'); cell.textContent = value; row.append(cell);
+        }
+        const statusCell = document.createElement('td');
+        const select = document.createElement('select');
+        for (const [value,label] of Object.entries(orderStatuses)) {
+          const option = document.createElement('option'); option.value = value; option.textContent = label; select.append(option);
+        }
+        select.value = Object.hasOwn(orderStatuses, order.status) ? order.status : 'pending';
+        if (order.status === 'cancelled') select.disabled = true;
+        select.addEventListener('change', async () => {
+          const previous = order.status;
+          const nextStatus = select.value;
+          if (nextStatus === 'cancelled' && !window.confirm(
+            'هل تريد إلغاء الطلب؟ قد يؤدي ذلك إلى إعادة كمياته للمخزون. تحقق من الطلبات القديمة أو المشحونة قبل الإلغاء.'
+          )) {
+            select.value = previous;
+            return;
+          }
+          select.disabled = true;
+          try {
+            const { error: updateError } = await supabase.rpc(
+              'admin_set_order_status',
+              { p_order_id: order.id, p_new_status: nextStatus }
+            );
+            if (updateError) throw updateError;
+            await loadOrders();
+            await loadProducts();
+            status.textContent = 'تم تحديث حالة الطلب بنجاح.';
+          } catch (error) {
+            console.error('Update order status:', error);
+            select.value = previous;
+            status.textContent = 'فشل تحديث الحالة: ' + error.message;
+            select.disabled = false;
+          }
+        });
+        statusCell.append(select); row.append(statusCell);
+        const actionsCell = document.createElement('td');
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'small light'; button.textContent = 'عرض التفاصيل';
+        button.addEventListener('click', () => showOrderDetails(order.id));
+        actionsCell.append(button); row.append(actionsCell); table.append(row);
+      }
+      if (!orders.length) {
+        const row = document.createElement('tr'); const cell = document.createElement('td');
+        cell.colSpan = 7; cell.textContent = 'لا توجد طلبات مسجلة حتى الآن.'; row.append(cell); table.append(row);
+      }
+      status.textContent = `تم تحميل ${orders.length} طلب.`;
+    }
+
+    $('refreshOrders').addEventListener('click', loadOrders);
+    $('closeOrderDetails').addEventListener('click', () => $('orderDetailsDialog').close());
+
+    init().catch(error => {
+      console.error(error);
+      message('حدث خطأ أثناء فتح لوحة التحكم. راجع Console.', 'error');
+    });
+  </script>
+</body>
+</html>
