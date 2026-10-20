@@ -6,7 +6,8 @@ const $ = id => document.getElementById(id);
 const WHATSAPP = '201012993309';
 const money = n => `${Number(n || 0).toLocaleString('ar-EG', { maximumFractionDigits: 2 })} ج.م`;
 let products = [], cart = {}, category = 'الكل', user = null, sending = false, authReady = false;
-const pendingKey = 'elgabry_checkout_pending_v2';
+const pendingKeyFor = uid => `elgabry_checkout_pending_v3_${uid}`;
+let ordersLoadToken = 0;
 const escapeStatus = (message, kind = '') => { $('status').textContent = message; $('status').className = `feedback ${kind}`; };
 
 async function loadProducts() {
@@ -96,6 +97,7 @@ $('checkout').onsubmit = async event => {
   if (!$('checkout').reportValidity()) return;
   const info = payload();
   const fingerprint = JSON.stringify({ ...info, items: chosen });
+  const pendingKey = pendingKeyFor(user.id);
   let pending = null;
   try { pending = JSON.parse(sessionStorage.getItem(pendingKey) || 'null'); } catch {}
   if (!pending || pending.fingerprint !== fingerprint) {
@@ -115,7 +117,13 @@ $('checkout').onsubmit = async event => {
     escapeStatus(`تم تسجيل طلبك بنجاح! رقم الطلب: ${data}. احتفظ بالرقم للمتابعة.`, 'success');
     await loadProducts();
     await loadMyOrders();
-  } catch (err) { console.error('Checkout error:', err); escapeStatus('تعذر تأكيد الطلب. حاول مرة أخرى بنفس البيانات، أو تواصل مع المكتبة.', 'error'); }
+  } catch (err) {
+    console.error('Checkout error:', err);
+    const msg = String(err?.message || '');
+    if (msg.includes('ORDER_RATE_LIMIT_10_MIN')) escapeStatus('وصلت للحد المؤقت: 3 طلبات خلال 10 دقائق. جرّب بعد شوية أو تواصل مع المكتبة.', 'error');
+    else if (msg.includes('ORDER_RATE_LIMIT_DAY')) escapeStatus('وصلت للحد اليومي: 12 طلب خلال 24 ساعة. تواصل مع المكتبة للمساعدة.', 'error');
+    else escapeStatus('تعذر تأكيد الطلب. لو مش متأكد إنه اتسجل، افتح «طلباتي» قبل ما تحاول تاني.', 'error');
+  }
   finally { sending = false; $('submitOrder').disabled = false; }
 };
 $('search').addEventListener('input', renderProducts);
@@ -178,6 +186,8 @@ $('logout').onclick = async () => {
 
 // طلبات العميل: RLS في قاعدة البيانات هو الذي يحدد صاحب الطلب.
 async function loadMyOrders() {
+  const token = ++ordersLoadToken;
+  const accountId = user?.id;
   const panel = $('myOrdersList');
   if (!panel) return;
   panel.replaceChildren();
@@ -186,6 +196,7 @@ async function loadMyOrders() {
   const { data, error } = await supabase.from('orders')
     .select('id,created_at,status,total,delivery_method,order_items(product_name,quantity,unit_price)')
     .order('created_at', { ascending: false }).limit(30);
+  if (token !== ordersLoadToken || accountId !== user?.id) return;
   panel.replaceChildren();
   if (error) { console.error('My orders:',error); panel.textContent = 'تعذر تحميل طلباتك. حاول مرة أخرى.'; return; }
   if (!data?.length) { panel.textContent = 'مفيش طلبات مرتبطة بحسابك لحد دلوقتي.'; return; }
@@ -209,7 +220,18 @@ $('refreshMyOrders')?.addEventListener('click',loadMyOrders);
 
 // Theme toggle is handled by ui-controls.js.
 supabase.auth.onAuthStateChange((_event, session) => {
-  user = session?.user || null;
+  const nextUser = session?.user || null;
+  const changed = user?.id !== nextUser?.id;
+  user = nextUser;
+  if (changed) {
+    ordersLoadToken++;
+    const panel = $('myOrdersList');
+    if (panel) panel.textContent = user ? 'جاري تحميل طلباتك...' : 'سجّل دخولك لعرض طلباتك.';
+    cart = {}; renderCart();
+    $('checkout').reset();
+    $('addressBox').hidden = true;
+    escapeStatus('');
+  }
   if (authReady) renderAccount();
 });
 try {
