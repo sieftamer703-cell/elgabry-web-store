@@ -120,3 +120,6 @@ html,body{background:var(--ui-bg)!important;color:var(--ui-text)!important}
 .floating-wa{background:#177b48!important;color:#fff!important}
 button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid var(--ui-focus)!important;outline-offset:3px}
 @media(max-width:600px){.account-dialog{padding:22px!important}.header-actions{width:100%;justify-content:space-between}.header-actions button{flex:1;padding:10px 5px!important;font-size:11px!important}.header-content .search-box{order:3}}
+
+/* طلباتي */
+.my-orders{margin:20px 0;border-top:1px solid var(--ui-line);padding-top:12px}.my-orders-head{display:flex;align-items:center;justify-content:space-between}.my-orders-head button{border:1px solid var(--ui-line);border-radius:10px;padding:8px 12px;background:var(--ui-soft);color:var(--ui-text)}.my-order-card{display:grid;gap:8px;padding:14px;margin:10px 0;border:1px solid var(--ui-line);border-radius:14px;background:var(--ui-soft);color:var(--ui-text)}.my-order-card small{color:var(--ui-muted)}
